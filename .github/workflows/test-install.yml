@@ -1,0 +1,168 @@
+name: Test Installation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-ubuntu:
+    name: Test on Ubuntu
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display system info
+        run: |
+          echo "OS: $(cat /etc/os-release | grep PRETTY_NAME)"
+          echo "Python: $(python3 --version)"
+          echo "Pip: $(python3 -m pip --version)"
+          echo "Shell: $SHELL"
+
+      - name: Make scripts executable
+        run: chmod +x setup.sh scripts/*.sh
+
+      - name: Run OS detection
+        run: ./scripts/detect-os.sh --check
+
+      - name: Create project directory
+        run: mkdir -p ~/quantum
+
+      - name: Create virtual environment
+        run: python3 -m venv ~/quantum/.venv
+
+      - name: Install quantum packages
+        run: |
+          source ~/quantum/.venv/bin/activate
+          pip install --upgrade pip
+          pip install \
+            qiskit \
+            qiskit-aer \
+            qiskit-ibm-runtime \
+            cirq \
+            pennylane \
+            numpy \
+            matplotlib \
+            scipy \
+            jupyter \
+            ipykernel
+        timeout-minutes: 15
+
+      - name: Copy project files
+        run: |
+          cp scripts/verify-setup.py ~/quantum/
+          cp -r examples/ ~/quantum/examples/
+          mkdir -p ~/quantum/.vscode
+          cp configs/vscode-settings.json ~/quantum/.vscode/settings.json
+
+      - name: Run verification script
+        run: |
+          source ~/quantum/.venv/bin/activate
+          python ~/quantum/verify-setup.py
+
+      - name: Test example scripts
+        run: |
+          source ~/quantum/.venv/bin/activate
+          cd ~/quantum
+          python examples/01-hello-quantum.py
+          python examples/02-bell-state.py
+          python examples/03-superposition.py
+          python examples/04-quantum-teleportation.py
+
+      - name: Validate Python files compile
+        run: |
+          source ~/quantum/.venv/bin/activate
+          python -m py_compile scripts/verify-setup.py
+          python -m py_compile examples/01-hello-quantum.py
+          python -m py_compile examples/02-bell-state.py
+          python -m py_compile examples/03-superposition.py
+          python -m py_compile examples/04-quantum-teleportation.py
+
+  test-windows:
+    name: Test on Windows
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display system info
+        run: |
+          Write-Host "OS: $([System.Environment]::OSVersion)"
+          Write-Host "Python: $(python --version)"
+          Write-Host "Pip: $(python -m pip --version)"
+        shell: pwsh
+
+      - name: Create project directory
+        run: New-Item -ItemType Directory -Path "$env:USERPROFILE\quantum" -Force
+        shell: pwsh
+
+      - name: Create virtual environment
+        run: python -m venv "$env:USERPROFILE\quantum\.venv"
+        shell: pwsh
+
+      - name: Install quantum packages
+        run: |
+          & "$env:USERPROFILE\quantum\.venv\Scripts\Activate.ps1"
+          pip install --upgrade pip
+          pip install qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane numpy matplotlib scipy jupyter ipykernel
+        shell: pwsh
+        timeout-minutes: 20
+
+      - name: Copy project files
+        run: |
+          Copy-Item "scripts\verify-setup.py" "$env:USERPROFILE\quantum\"
+          Copy-Item -Recurse "examples" "$env:USERPROFILE\quantum\examples"
+          New-Item -ItemType Directory -Path "$env:USERPROFILE\quantum\.vscode" -Force
+          Copy-Item "configs\vscode-settings.json" "$env:USERPROFILE\quantum\.vscode\settings.json"
+        shell: pwsh
+
+      - name: Run verification script
+        run: |
+          & "$env:USERPROFILE\quantum\.venv\Scripts\Activate.ps1"
+          python "$env:USERPROFILE\quantum\verify-setup.py"
+        shell: pwsh
+
+      - name: Test example scripts
+        run: |
+          & "$env:USERPROFILE\quantum\.venv\Scripts\Activate.ps1"
+          Set-Location "$env:USERPROFILE\quantum"
+          python examples\01-hello-quantum.py
+          python examples\02-bell-state.py
+        shell: pwsh
+
+  shellcheck:
+    name: ShellCheck Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck on all bash scripts
+        run: |
+          shellcheck setup.sh scripts/detect-os.sh scripts/install-arch.sh \
+            scripts/install-debian.sh scripts/common-functions.sh \
+            || echo "ShellCheck found warnings (non-blocking)"
