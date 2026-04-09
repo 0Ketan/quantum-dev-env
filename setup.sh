@@ -16,9 +16,9 @@
 # the appropriate installer for your quantum computing dev environment.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/your-username/quantum-dev-env/main/setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/0Ketan/quantum-dev-env/main/setup.sh | bash
 #   # or
-#   git clone https://github.com/your-username/quantum-dev-env.git
+#   git clone https://github.com/0Ketan/quantum-dev-env.git
 #   cd quantum-dev-env && ./setup.sh
 #
 # Options:
@@ -40,12 +40,12 @@ if [[ -z "$SCRIPT_DIR" || ! -f "${SCRIPT_DIR}/scripts/common-functions.sh" ]]; t
     # Running from pipe - need to clone the repo
     TEMP_DIR=$(mktemp -d)
     echo "📥 Downloading quantum-dev-env..."
-    if git clone --depth 1 https://github.com/your-username/quantum-dev-env.git "$TEMP_DIR/quantum-dev-env" 2>/dev/null; then
+    if git clone --depth 1 https://github.com/0Ketan/quantum-dev-env.git "$TEMP_DIR/quantum-dev-env" 2>/dev/null; then
         SCRIPT_DIR="$TEMP_DIR/quantum-dev-env"
     else
         echo "❌ Failed to download quantum-dev-env"
         echo "   Please clone manually:"
-        echo "   git clone https://github.com/your-username/quantum-dev-env.git"
+        echo "   git clone https://github.com/0Ketan/quantum-dev-env.git"
         echo "   cd quantum-dev-env && ./setup.sh"
         exit 1
     fi
@@ -82,12 +82,12 @@ Supported platforms:
   🪟 Windows 10/11 (via PowerShell - see docs/windows.md)
 
 Quick start:
-  git clone https://github.com/your-username/quantum-dev-env.git
+  git clone https://github.com/0Ketan/quantum-dev-env.git
   cd quantum-dev-env
   ./setup.sh
 
 For more information:
-  https://github.com/your-username/quantum-dev-env
+  https://github.com/0Ketan/quantum-dev-env
 EOF
 }
 

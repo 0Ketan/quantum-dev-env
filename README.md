@@ -1,12 +1,12 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # ⚛️ Quantum Dev Environment
 
 **One-command quantum computing development environment setup.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform: Linux](https://img.shields.io/badge/Platform-Linux-orange.svg)](#supported-platforms)
-[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#supported-platforms)
+[![Platform: Linux](https://img.shields.io/badge/Platform-Linux-orange.svg)](#-supported-platforms)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#-supported-platforms)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-3776AB.svg)](https://www.python.org/)
 [![Qiskit](https://img.shields.io/badge/Qiskit-✓-6929C4.svg)](https://qiskit.org/)
 [![Cirq](https://img.shields.io/badge/Cirq-✓-FBBC04.svg)](https://quantumai.google/cirq)
@@ -29,7 +29,7 @@ Whether you're a **student** taking your first quantum computing class, a **rese
 ### Linux (Arch, Manjaro, Ubuntu, Debian, Mint)
 
 ```bash
-git clone https://github.com/your-username/quantum-dev-env.git
+git clone https://github.com/0Ketan/quantum-dev-env.git
 cd quantum-dev-env
 chmod +x setup.sh
 ./setup.sh
@@ -38,7 +38,7 @@ chmod +x setup.sh
 ### Windows 10/11 (PowerShell)
 
 ```powershell
-git clone https://github.com/your-username/quantum-dev-env.git
+git clone https://github.com/0Ketan/quantum-dev-env.git
 cd quantum-dev-env
 powershell -ExecutionPolicy Bypass -File scripts/install-windows.ps1
 ```
@@ -46,7 +46,7 @@ powershell -ExecutionPolicy Bypass -File scripts/install-windows.ps1
 ### One-Liner (Linux)
 
 ```bash
-git clone https://github.com/your-username/quantum-dev-env.git && cd quantum-dev-env && chmod +x setup.sh && ./setup.sh
+git clone https://github.com/0Ketan/quantum-dev-env.git && cd quantum-dev-env && chmod +x setup.sh && ./setup.sh
 ```
 
 That's it! ☕ Grab a coffee while it installs.
@@ -119,8 +119,8 @@ The installer includes four beginner-friendly quantum programs:
 Run an example:
 
 ```bash
-qenv                                    # Activate environment
-python ~/quantum/examples/01-hello-quantum.py   # Run example
+qenv                                             # Activate environment
+python ~/quantum/examples/01-hello-quantum.py    # Run example
 ```
 
 Start Jupyter for interactive exploration:
@@ -147,7 +147,7 @@ After installation, these aliases are available:
 Having issues? Check:
 
 1. **[Troubleshooting Guide](docs/troubleshooting.md)** — Common problems and solutions
-2. **[GitHub Issues](https://github.com/your-username/quantum-dev-env/issues)** — Search existing issues
+2. **[GitHub Issues](https://github.com/0Ketan/quantum-dev-env/issues)** — Search existing issues
 3. **Open a new issue** — Use our [bug report template](.github/ISSUE_TEMPLATE/bug_report.md)
 
 Common quick fixes:
@@ -168,26 +168,31 @@ python3 --version  # Should be 3.8+
 
 <details>
 <summary><b>Do I need a quantum computer?</b></summary>
+
 No! All examples run on a simulator (Qiskit Aer) that runs on your regular computer. You can optionally connect to real IBM quantum hardware for free via IBM Quantum.
 </details>
 
 <details>
 <summary><b>Will this modify my system Python?</b></summary>
-No. Everything is installed in an isolated virtual environment at <code>~/quantum/.venv</code>. Your system Python is never modified.
+
+No. Everything is installed in an isolated virtual environment at `~/quantum/.venv`. Your system Python is never modified.
 </details>
 
 <details>
 <summary><b>How much disk space does this need?</b></summary>
+
 Approximately 2-3 GB for all packages and dependencies.
 </details>
 
 <details>
 <summary><b>Can I use this with Conda?</b></summary>
-The default setup uses Python venv. If you prefer Conda, see the manual installation guides in <code>docs/</code>.
+
+The default setup uses Python venv. If you prefer Conda, see the manual installation guides in `docs/`.
 </details>
 
 <details>
 <summary><b>How do I uninstall?</b></summary>
+
 Simply delete the quantum directory and remove the aliases from your shell config:
 
 ```bash
@@ -198,7 +203,8 @@ rm -rf ~/quantum
 
 <details>
 <summary><b>Can I use a different project directory?</b></summary>
-Yes! Use the <code>--dir</code> flag:
+
+Yes! Use the `--dir` flag:
 
 ```bash
 ./setup.sh --dir ~/my-quantum-project
@@ -235,4 +241,3 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 *Built with ❤️ for the quantum computing community*
 
 </div>
-]]>

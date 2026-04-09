@@ -178,7 +178,7 @@ wsl --install -d Ubuntu
 
 ```bash
 # Inside WSL Ubuntu terminal
-git clone https://github.com/your-username/quantum-dev-env.git
+git clone https://github.com/0Ketan/quantum-dev-env.git
 cd quantum-dev-env
 chmod +x setup.sh
 ./setup.sh

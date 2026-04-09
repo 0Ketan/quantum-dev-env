@@ -466,7 +466,7 @@ pip install --no-index --find-links ./packages qiskit
    ```
 
 2. **Search existing issues:**
-   [GitHub Issues](https://github.com/your-username/quantum-dev-env/issues)
+   [GitHub Issues](https://github.com/0Ketan/quantum-dev-env/issues)
 
 3. **Open a new issue** with:
    - Your OS and version (`cat /etc/os-release`)

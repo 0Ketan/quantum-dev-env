@@ -431,8 +431,8 @@ show_success_message() {
     echo -e "${BOLD}Open in VS Code:${NC}"
     echo -e "  ${YELLOW}qcd && code .${NC}"
     echo ""
-    echo -e "${CYAN}📖 Documentation:${NC} https://github.com/your-username/quantum-dev-env"
-    echo -e "${CYAN}🐛 Report issues:${NC} https://github.com/your-username/quantum-dev-env/issues"
+    echo -e "${CYAN}📖 Documentation:${NC} https://github.com/0Ketan/quantum-dev-env"
+    echo -e "${CYAN}🐛 Report issues:${NC} https://github.com/0Ketan/quantum-dev-env/issues"
     echo ""
     echo -e "${MAGENTA}${BOLD}Happy quantum computing! 🚀${NC}"
 }
