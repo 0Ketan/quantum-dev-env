@@ -158,9 +158,16 @@ Save and reload:
 ## Step 10: Verify Installation
 
 ```powershell
-qenv
-python verify-setup.py
+qtest
 ```
+
+> [!NOTE]
+> `qtest` activates the environment and runs the verification script from the correct absolute path automatically. Alternatively run manually:
+> ```powershell
+> qenv
+> qcd
+> python verify-setup.py
+> ```
 
 ---
 

@@ -89,13 +89,16 @@ update_system() {
     print_step "1/7" "Updating system packages"
     print_info "Running apt update && apt upgrade..."
 
-    if sudo apt update -y 2>&1 | tail -3; then
+    # Run separately: piping to tail makes $? always 0 (tail's exit code)
+    sudo apt update -y 2>&1 | tail -3
+    if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
         print_success "Package lists updated"
     else
         print_warning "Package list update had warnings (continuing...)"
     fi
 
-    if sudo apt upgrade -y 2>&1 | tail -3; then
+    sudo apt upgrade -y 2>&1 | tail -3
+    if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
         print_success "System packages upgraded"
     else
         print_warning "System upgrade had warnings (continuing...)"

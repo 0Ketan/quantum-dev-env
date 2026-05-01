@@ -79,6 +79,7 @@ Options:
 Supported platforms:
   🐧 Arch-based Linux (Arch, Manjaro, CachyOS, Garuda)
   🐧 Debian-based Linux (Ubuntu, Debian, Linux Mint)
+  🍎 macOS (Apple Silicon M1/M2/M3 & Intel)
   🪟 Windows 10/11 (via PowerShell - see docs/windows.md)
 
 Quick start:
@@ -139,8 +140,7 @@ main() {
     os_type=$("${SCRIPT_DIR}/scripts/detect-os.sh" --quiet) || os_type="unknown"
 
     local distro_name
-    distro_name=$(grep -oP '^PRETTY_NAME=\K.*' /etc/os-release 2>/dev/null \
-                  | tr -d '"' || echo "Unknown")
+    distro_name=$(get_distro_name)
 
     echo -e "  ${BOLD}Detected:${NC} $distro_name"
     echo -e "  ${BOLD}OS Type:${NC}  $os_type"
@@ -179,10 +179,8 @@ main() {
             exit 1
             ;;
         macos)
-            print_error "macOS is not currently supported"
-            print_info "macOS support is planned for a future release"
-            print_info "Want to contribute? See docs/contributing.md"
-            exit 1
+            print_info "Using macOS installer (Homebrew)"
+            bash "${SCRIPT_DIR}/scripts/install-macos.sh" "${PASSTHROUGH_ARGS[@]+"${PASSTHROUGH_ARGS[@]}"}"
             ;;
         *)
             print_error "Could not detect your operating system"
@@ -190,6 +188,7 @@ main() {
             print_info "Supported platforms:"
             echo "  • Arch-based (Arch, Manjaro, CachyOS, Garuda)"
             echo "  • Debian-based (Ubuntu, Debian, Linux Mint)"
+            echo "  • macOS (Apple Silicon & Intel)"
             echo "  • Windows 10/11 (use install-windows.ps1)"
             echo ""
             print_info "For manual installation, see the docs/ directory"
@@ -199,7 +198,13 @@ main() {
 
     # Step 3: Done!
     print_step "3/3" "Setup complete"
-    print_info "Restart your terminal or run: source ~/.bashrc"
+    local shell_name
+    shell_name=$(detect_shell)
+    case "$shell_name" in
+        zsh)  print_info "Restart your terminal or run: source ~/.zshrc" ;;
+        fish) print_info "Restart your terminal or run: source ~/.config/fish/config.fish" ;;
+        *)    print_info "Restart your terminal or run: source ~/.bashrc" ;;
+    esac
     print_info "Then type 'qenv' to activate your quantum environment"
     echo ""
 }

@@ -4,18 +4,21 @@
 
 .DESCRIPTION
     This script installs a complete quantum computing development environment
-    on Windows, including Python, VS Code, and all quantum computing packages
+    on Windows, including Python, VS Code, Git, and all quantum computing packages
     (Qiskit, Cirq, PennyLane).
 
-.PARAMETER Confirm
+.PARAMETER AutoConfirm
     Skip confirmation prompts (auto-accept all)
 
 .PARAMETER QuantumDir
     Set the quantum project directory (default: $HOME\quantum)
 
+.PARAMETER Help
+    Show help message
+
 .EXAMPLE
     .\install-windows.ps1
-    .\install-windows.ps1 -Confirm
+    .\install-windows.ps1 -AutoConfirm
     .\install-windows.ps1 -QuantumDir "D:\quantum"
 
 .NOTES
@@ -32,7 +35,9 @@ param(
 # Configuration
 # ==============================================================================
 
-$ErrorActionPreference = "Stop"
+# Use "Continue" globally to prevent stderr from native commands (winget, pip)
+# from terminating the script. We handle errors explicitly with $LASTEXITCODE.
+$ErrorActionPreference = "Continue"
 
 $QuantumPackages = @(
     "qiskit",
@@ -43,11 +48,37 @@ $QuantumPackages = @(
     "numpy",
     "matplotlib",
     "scipy",
+    "pandas",
     "jupyter",
     "ipykernel"
 )
 
 $VenvDir = Join-Path $QuantumDir ".venv"
+
+# ==============================================================================
+# Resolve script root directory (repo root)
+# ==============================================================================
+
+# $PSScriptRoot points to scripts/ — go one level up for the repo root.
+# We add fallbacks for cases where $PSScriptRoot is empty (e.g., pasting
+# into a console or running via Invoke-Expression).
+$ScriptRoot = $null
+
+if ($PSScriptRoot) {
+    $ScriptRoot = Split-Path -Parent $PSScriptRoot
+}
+
+if (-not $ScriptRoot -and $MyInvocation.MyCommand.Path) {
+    # MyInvocation.MyCommand.Path = full path to .ps1 file
+    # Split twice: once to get scripts/, again to get repo root
+    $ScriptRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+}
+
+if (-not $ScriptRoot) {
+    # Last resort: assume current directory is the repo root
+    # Cast to string so Join-Path works correctly (Get-Location returns PathInfo)
+    $ScriptRoot = (Get-Location).Path
+}
 
 # ==============================================================================
 # Output Functions
@@ -107,7 +138,7 @@ Options:
 
 What gets installed:
   System: Python 3.11+, VS Code, Git
-  Python: qiskit, cirq, pennylane, jupyter, numpy, matplotlib, scipy
+  Python: qiskit, cirq, pennylane, jupyter, numpy, matplotlib, scipy, pandas
 
 Examples:
   .\install-windows.ps1
@@ -126,10 +157,20 @@ function Test-CommandExists {
     return $?
 }
 
+function Test-WingetAvailable {
+    if (Test-CommandExists "winget") {
+        return $true
+    }
+    Write-Warn "winget is not available on this system"
+    Write-Info "winget comes pre-installed on Windows 11 and recent Windows 10 updates"
+    Write-Info "Install it from: https://aka.ms/getwinget"
+    return $false
+}
+
 function Test-InternetConnection {
     Write-Info "Checking internet connectivity..."
     try {
-        $response = Invoke-WebRequest -Uri "https://pypi.org" -UseBasicParsing `
+        $null = Invoke-WebRequest -Uri "https://pypi.org" -UseBasicParsing `
                     -TimeoutSec 5 -ErrorAction Stop
         Write-Success "Internet connection verified"
         return $true
@@ -145,9 +186,14 @@ function Get-PythonCommand {
     # Try common Python command names on Windows
     foreach ($cmd in @("python", "python3", "py")) {
         if (Test-CommandExists $cmd) {
-            $version = & $cmd --version 2>&1
-            if ($version -match "Python 3\.") {
-                return $cmd
+            try {
+                $version = & $cmd --version 2>&1
+                if ($version -match "Python 3\.") {
+                    return $cmd
+                }
+            }
+            catch {
+                # Skip this command if it fails
             }
         }
     }
@@ -158,13 +204,14 @@ function Get-PythonCommand {
 # Installation Functions
 # ==============================================================================
 
-function Confirm-Installation {
+function Get-InstallConfirmation {
     if ($AutoConfirm) { return }
 
     Write-Host "The following will be installed:" -ForegroundColor White
     Write-Host ""
     Write-Host "  📦 Python 3.11+ (if not installed)"
     Write-Host "  🖥️  VS Code (if not installed)"
+    Write-Host "  🔧 Git (if not installed)"
     Write-Host "  🐍 Packages: $($QuantumPackages -join ', ')"
     Write-Host "  📂 Directory: $QuantumDir"
     Write-Host ""
@@ -177,7 +224,7 @@ function Confirm-Installation {
 }
 
 function Install-Python {
-    Write-Step "1/6" "Checking Python installation"
+    Write-Step "1/7" "Checking Python installation"
 
     $pythonCmd = Get-PythonCommand
 
@@ -197,56 +244,104 @@ function Install-Python {
         }
     }
 
-    Write-Info "Installing Python via winget..."
-    try {
-        winget install Python.Python.3.11 --accept-source-agreements `
-              --accept-package-agreements --silent 2>&1 | Out-Null
-        Write-Success "Python 3.11 installed"
-
-        # Refresh PATH
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" `
-                   + [System.Environment]::GetEnvironmentVariable("Path", "User")
-
-        $pythonCmd = Get-PythonCommand
-        if (-not $pythonCmd) {
-            Write-Error2 "Python installed but not found in PATH"
-            Write-Info "Please restart your terminal and run this script again"
-            exit 1
-        }
-        return $pythonCmd
-    }
-    catch {
-        Write-Error2 "Failed to install Python via winget"
+    if (-not (Test-WingetAvailable)) {
+        Write-Error2 "Cannot install Python automatically without winget"
         Write-Info "Please install Python manually from https://www.python.org/downloads/"
         Write-Info "Make sure to check 'Add Python to PATH' during installation"
         exit 1
     }
+
+    Write-Info "Installing Python via winget..."
+    # Redirect stdout to $null; keep stderr visible so errors aren't hidden.
+    # Do NOT use 2>&1 | Out-Null — that swallows stderr AND breaks $LASTEXITCODE
+    # in PowerShell 5.1. Instead redirect only stdout with *>&1 selectively.
+    & winget install Python.Python.3.11 --accept-source-agreements `
+          --accept-package-agreements --silent | Out-Null
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error2 "Failed to install Python via winget (exit code: $LASTEXITCODE)"
+        Write-Info "Please install Python manually from https://www.python.org/downloads/"
+        Write-Info "Make sure to check 'Add Python to PATH' during installation"
+        exit 1
+    }
+
+    Write-Success "Python 3.11 installed"
+
+    # Refresh PATH so the newly installed Python is found
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" `
+               + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+    $pythonCmd = Get-PythonCommand
+    if (-not $pythonCmd) {
+        Write-Error2 "Python installed but not found in PATH"
+        Write-Info "Please restart your terminal and run this script again"
+        exit 1
+    }
+    return $pythonCmd
+}
+
+function Install-Git {
+    Write-Step "2/7" "Checking Git installation"
+
+    if (Test-CommandExists "git") {
+        $gitVersion = & git --version 2>&1
+        Write-Success "Git is already installed: $gitVersion"
+        return
+    }
+
+    if (-not (Test-WingetAvailable)) {
+        Write-Warn "Cannot install Git automatically without winget"
+        Write-Info "Install manually from: https://git-scm.com/download/windows"
+        return
+    }
+
+    Write-Info "Installing Git via winget..."
+    & winget install Git.Git --accept-source-agreements `
+          --accept-package-agreements --silent | Out-Null
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "Could not install Git automatically (exit code: $LASTEXITCODE)"
+        Write-Info "Install manually from: https://git-scm.com/download/windows"
+    }
+    else {
+        Write-Success "Git installed"
+        # Refresh PATH
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" `
+                   + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    }
 }
 
 function Install-VSCode {
-    Write-Step "2/6" "Checking VS Code installation"
+    Write-Step "3/7" "Checking VS Code installation"
 
     if (Test-CommandExists "code") {
         Write-Success "VS Code is already installed"
         return
     }
 
-    Write-Info "Installing VS Code via winget..."
-    try {
-        winget install Microsoft.VisualStudioCode --accept-source-agreements `
-              --accept-package-agreements --silent 2>&1 | Out-Null
-        Write-Success "VS Code installed"
-    }
-    catch {
-        Write-Warn "Could not install VS Code automatically"
+    if (-not (Test-WingetAvailable)) {
+        Write-Warn "Cannot install VS Code automatically without winget"
         Write-Info "Install manually: https://code.visualstudio.com/"
+        return
+    }
+
+    Write-Info "Installing VS Code via winget..."
+    & winget install Microsoft.VisualStudioCode --accept-source-agreements `
+          --accept-package-agreements --silent | Out-Null
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "Could not install VS Code automatically (exit code: $LASTEXITCODE)"
+        Write-Info "Install manually: https://code.visualstudio.com/"
+    }
+    else {
+        Write-Success "VS Code installed"
     }
 }
 
-function Setup-Project {
+function Initialize-Project {
     param([string]$PythonCmd)
 
-    Write-Step "3/6" "Setting up project directory"
+    Write-Step "4/7" "Setting up project directory"
 
     if (-not (Test-Path $QuantumDir)) {
         New-Item -ItemType Directory -Path $QuantumDir -Force | Out-Null
@@ -269,20 +364,41 @@ function Setup-Project {
                 return
             }
         }
+        else {
+            # -AutoConfirm: silently recreate to ensure a clean environment
+            Write-Info "Recreating virtual environment (AutoConfirm)..."
+            Remove-Item -Path $VenvDir -Recurse -Force
+        }
     }
 
     Write-Info "Creating virtual environment..."
-    & $PythonCmd -m venv $VenvDir
+    # Capture output so progress lines don't clutter the console
+    $venvOut = & $PythonCmd -m venv $VenvDir 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error2 "Failed to create virtual environment"
+        if ($venvOut) { Write-Host $venvOut -ForegroundColor Red }
+        exit 1
+    }
     Write-Success "Virtual environment created at: $VenvDir"
 }
 
 function Install-QuantumPackages {
-    Write-Step "4/6" "Installing quantum computing packages"
+    Write-Step "5/7" "Installing quantum computing packages"
 
     $pipCmd = Join-Path $VenvDir "Scripts\pip.exe"
 
+    if (-not (Test-Path $pipCmd)) {
+        Write-Error2 "pip not found at: $pipCmd"
+        Write-Info "The virtual environment may not have been created correctly"
+        exit 1
+    }
+
     Write-Info "Upgrading pip..."
-    & $pipCmd install --upgrade pip --quiet 2>$null
+    # Pipe stdout only to Out-Null; pip writes errors to stderr so they stay visible
+    & $pipCmd install --upgrade pip --quiet | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "pip upgrade failed (non-critical, continuing...)"
+    }
 
     Write-Info "Installing $($QuantumPackages.Count) packages (this may take a few minutes)..."
     Write-Host ""
@@ -291,11 +407,14 @@ function Install-QuantumPackages {
     foreach ($pkg in $QuantumPackages) {
         $padded = $pkg.PadRight(30)
         Write-Host "  $padded" -NoNewline
-        try {
-            & $pipCmd install $pkg --quiet 2>$null
+
+        # Stdout only to Out-Null; pip error messages stay on stderr for debugging
+        & $pipCmd install $pkg --quiet | Out-Null
+
+        if ($LASTEXITCODE -eq 0) {
             Write-Host "✅ installed" -ForegroundColor Green
         }
-        catch {
+        else {
             Write-Host "❌ failed" -ForegroundColor Red
             $failed += $pkg
         }
@@ -305,6 +424,9 @@ function Install-QuantumPackages {
 
     if ($failed.Count -gt 0) {
         Write-Warn "Some packages failed: $($failed -join ', ')"
+        Write-Info "You can try installing them manually:"
+        Write-Info "  & `"$VenvDir\Scripts\Activate.ps1`""
+        Write-Info "  pip install $($failed -join ' ')"
     }
     else {
         Write-Success "All packages installed successfully"
@@ -312,39 +434,49 @@ function Install-QuantumPackages {
 
     # Register Jupyter kernel
     Write-Info "Registering Jupyter kernel..."
-    $pythonCmd = Join-Path $VenvDir "Scripts\python.exe"
-    try {
-        & $pythonCmd -m ipykernel install --user --name quantum-env `
-                     --display-name "Quantum Computing (Python)" 2>$null
+    # Use a distinct name to avoid shadowing the $pythonCmd returned from Install-Python
+    $venvPython = Join-Path $VenvDir "Scripts\python.exe"
+    & $venvPython -m ipykernel install --user --name quantum-env `
+                  --display-name "Quantum Computing (Python)" | Out-Null
+
+    if ($LASTEXITCODE -eq 0) {
         Write-Success "Jupyter kernel registered"
     }
-    catch {
+    else {
         Write-Warn "Failed to register Jupyter kernel (non-critical)"
     }
 }
 
-function Configure-Environment {
-    Write-Step "5/6" "Configuring development environment"
+function Set-QuantumEnvironment {
+    Write-Step "6/7" "Configuring development environment"
 
-    $scriptRoot = Split-Path -Parent $PSScriptRoot
-    if (-not $scriptRoot) {
-        $scriptRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-    }
-
-    # Copy VS Code settings
+    # Copy VS Code settings (with Windows-specific Python path)
     $vscodeDir = Join-Path $QuantumDir ".vscode"
     if (-not (Test-Path $vscodeDir)) {
         New-Item -ItemType Directory -Path $vscodeDir -Force | Out-Null
     }
 
-    $settingsSrc = Join-Path $scriptRoot "configs\vscode-settings.json"
+    $settingsSrc = Join-Path $ScriptRoot "configs\vscode-settings.json"
+    $settingsDst = Join-Path $vscodeDir "settings.json"
+
     if (Test-Path $settingsSrc) {
-        Copy-Item $settingsSrc (Join-Path $vscodeDir "settings.json") -Force
-        Write-Success "VS Code settings configured"
+        # Read the template and fix the Python interpreter path for Windows.
+        # Use plain .NET String.Replace() — no regex involved, no back-reference
+        # expansion risk. Simple literal-to-literal swap is the safest approach.
+        $settingsContent = Get-Content $settingsSrc -Raw
+        $settingsContent = $settingsContent.Replace(
+            '"${workspaceFolder}/.venv/bin/python"',
+            '"${workspaceFolder}\.venv\Scripts\python.exe"'
+        )
+        Set-Content -Path $settingsDst -Value $settingsContent -Encoding UTF8
+        Write-Success "VS Code settings configured (Windows paths applied)"
+    }
+    else {
+        Write-Warn "VS Code settings template not found at: $settingsSrc"
     }
 
     # Copy examples
-    $examplesSrc = Join-Path $scriptRoot "examples"
+    $examplesSrc = Join-Path $ScriptRoot "examples"
     $examplesDst = Join-Path $QuantumDir "examples"
     if (Test-Path $examplesSrc) {
         if (-not (Test-Path $examplesDst)) {
@@ -353,12 +485,18 @@ function Configure-Environment {
         Copy-Item "$examplesSrc\*" $examplesDst -Force -Recurse
         Write-Success "Example programs copied"
     }
+    else {
+        Write-Warn "Examples directory not found at: $examplesSrc"
+    }
 
     # Copy verify script
-    $verifySrc = Join-Path $scriptRoot "scripts\verify-setup.py"
+    $verifySrc = Join-Path $ScriptRoot "scripts\verify-setup.py"
     if (Test-Path $verifySrc) {
         Copy-Item $verifySrc (Join-Path $QuantumDir "verify-setup.py") -Force
         Write-Success "Verification script copied"
+    }
+    else {
+        Write-Warn "Verification script not found at: $verifySrc"
     }
 
     # Create PowerShell profile function
@@ -374,16 +512,24 @@ function Configure-Environment {
 
     $marker = "# >>> quantum-dev-env >>>"
     $profileContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
-    if (-not ($profileContent -and $profileContent.Contains($marker))) {
-        $profileAddition = @"
 
-$marker
-function qenv { & "$VenvDir\Scripts\Activate.ps1" }
-function qcd { Set-Location "$QuantumDir" }
-function qtest { & "$VenvDir\Scripts\python.exe" "$QuantumDir\verify-setup.py" }
+    if (-not ($profileContent -and $profileContent.Contains($marker))) {
+        # Use single-quote here-string to avoid variable expansion, then
+        # replace placeholder tokens with the actual paths. This ensures the
+        # profile file contains literal paths (not variables that won't exist
+        # when the profile is loaded in a fresh session).
+        $profileBlock = @'
+
+# >>> quantum-dev-env >>>
+function qenv { & "__VENV_DIR__\Scripts\Activate.ps1" }
+function qcd { Set-Location "__QUANTUM_DIR__" }
+function qtest { & "__VENV_DIR__\Scripts\python.exe" "__QUANTUM_DIR__\verify-setup.py" }
 # <<< quantum-dev-env <<<
-"@
-        Add-Content -Path $PROFILE -Value $profileAddition
+'@
+        $profileBlock = $profileBlock.Replace("__VENV_DIR__", $VenvDir)
+        $profileBlock = $profileBlock.Replace("__QUANTUM_DIR__", $QuantumDir)
+
+        Add-Content -Path $PROFILE -Value $profileBlock
         Write-Success "PowerShell profile functions added (qenv, qcd, qtest)"
     }
     else {
@@ -391,22 +537,26 @@ function qtest { & "$VenvDir\Scripts\python.exe" "$QuantumDir\verify-setup.py" }
     }
 }
 
-function Run-Verification {
-    Write-Step "6/6" "Verifying installation"
+function Invoke-Verification {
+    Write-Step "7/7" "Verifying installation"
 
     $pythonCmd = Join-Path $VenvDir "Scripts\python.exe"
     $verifyScript = Join-Path $QuantumDir "verify-setup.py"
 
+    if (-not (Test-Path $pythonCmd)) {
+        Write-Warn "Python not found at: $pythonCmd"
+        Write-Info "Virtual environment may not be set up correctly"
+        return
+    }
+
     if (Test-Path $verifyScript) {
-        try {
-            & $pythonCmd $verifyScript
-        }
-        catch {
-            Write-Warn "Some verification checks failed"
+        & $pythonCmd $verifyScript
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "Some verification checks failed (see above)"
         }
     }
     else {
-        Write-Warn "Verification script not found"
+        Write-Warn "Verification script not found at: $verifyScript"
     }
 }
 
@@ -445,6 +595,14 @@ if ($Help) {
 
 Write-Banner "🚀 Quantum Dev Environment - Windows Installer"
 
+# Check PowerShell version
+if ($PSVersionTable.PSVersion.Major -lt 5) {
+    Write-Error2 "PowerShell 5.1 or higher is required"
+    Write-Info "Current version: $($PSVersionTable.PSVersion)"
+    Write-Info "Update PowerShell: https://aka.ms/powershell"
+    exit 1
+}
+
 # Check execution policy
 $policy = Get-ExecutionPolicy
 if ($policy -eq "Restricted") {
@@ -461,7 +619,7 @@ if ($policy -eq "Restricted") {
     }
 }
 
-Confirm-Installation
+Get-InstallConfirmation
 
 if (-not (Test-InternetConnection)) {
     exit 1
@@ -469,13 +627,16 @@ if (-not (Test-InternetConnection)) {
 
 $startTime = Get-Date
 $pythonCmd = Install-Python
+Install-Git
 Install-VSCode
-Setup-Project -PythonCmd $pythonCmd
+Initialize-Project -PythonCmd $pythonCmd
 Install-QuantumPackages
-Configure-Environment
-Run-Verification
+Set-QuantumEnvironment
+Invoke-Verification
 
 $elapsed = (Get-Date) - $startTime
-Write-Info ("Installation completed in {0:N0}m {1:N0}s" -f $elapsed.TotalMinutes, ($elapsed.Seconds))
+$totalMins = [int]$elapsed.TotalMinutes
+$secs = $elapsed.Seconds
+Write-Info "Installation completed in ${totalMins}m ${secs}s"
 
 Show-SuccessMessage

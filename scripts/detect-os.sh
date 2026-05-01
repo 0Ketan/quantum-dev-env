@@ -3,7 +3,7 @@
 # detect-os.sh - Detect the operating system and validate system requirements
 # ==============================================================================
 # This script detects the host operating system (Arch-based, Debian-based,
-# Fedora-based, or Windows/WSL) and checks for system-level dependencies
+# Fedora-based, macOS, or Windows/WSL) and checks for system-level dependencies
 # required to set up the quantum development environment.
 #
 # Usage:
@@ -38,9 +38,19 @@ else
         else echo ""; fi
     }
     validate_python_version() { "$1" --version; return 0; }
-    get_distro_name() {
+    get_distro_id() {
+        if [[ "$(uname -s)" == "Darwin" ]]; then echo "macos"; return 0; fi
         if [[ -f /etc/os-release ]]; then
-            grep -oP '^PRETTY_NAME=\K.*' /etc/os-release | tr -d '"'
+            sed -n 's/^ID="\?\([^"]*\)"\?$/\1/p' /etc/os-release | head -1
+        else uname -s | tr '[:upper:]' '[:lower:]'; fi
+    }
+    get_distro_name() {
+        if [[ "$(uname -s)" == "Darwin" ]]; then
+            local v; v=$(sw_vers -productVersion 2>/dev/null || echo "unknown")
+            echo "macOS $v"; return 0
+        fi
+        if [[ -f /etc/os-release ]]; then
+            sed -n 's/^PRETTY_NAME="\?\([^"]*\)"\?$/\1/p' /etc/os-release | head -1
         else uname -s; fi
     }
 fi
@@ -50,7 +60,7 @@ fi
 # ==============================================================================
 
 # Detect the operating system family
-# Returns: arch, debian, fedora, windows, or unknown
+# Returns: arch, debian, fedora, macos, windows, wsl, or unknown
 detect_os() {
     # Check for Windows (Git Bash, MSYS, Cygwin, or WSL)
     if [[ "${OS:-}" == "Windows_NT" ]] || uname -r 2>/dev/null | grep -qi microsoft; then
@@ -62,8 +72,8 @@ detect_os() {
         return 0
     fi
 
-    # Check for macOS
-    if [[ "$(uname -s)" == "Darwin" ]]; then
+    # Check for macOS via uname -s or $OSTYPE
+    if [[ "$(uname -s)" == "Darwin" ]] || [[ "${OSTYPE:-}" == darwin* ]]; then
         echo "macos"
         return 0
     fi
@@ -71,8 +81,8 @@ detect_os() {
     # Linux detection via /etc/os-release
     if [[ -f /etc/os-release ]]; then
         local id id_like
-        id=$(grep -oP '^ID=\K.*' /etc/os-release | tr -d '"')
-        id_like=$(grep -oP '^ID_LIKE=\K.*' /etc/os-release 2>/dev/null | tr -d '"' || echo "")
+        id=$(sed -n 's/^ID="\?\([^"]*\)"\?$/\1/p' /etc/os-release | head -1)
+        id_like=$(sed -n 's/^ID_LIKE="\?\([^"]*\)"\?$/\1/p' /etc/os-release 2>/dev/null | head -1 || echo "")
 
         # Arch-based: Arch, Manjaro, CachyOS, Garuda, EndeavourOS
         if [[ "$id" == "arch" ]] || echo "$id_like" | grep -q "arch"; then
@@ -110,14 +120,15 @@ detect_os() {
     elif check_command dnf; then
         echo "fedora"
         return 0
+    elif check_command brew; then
+        # Homebrew detected → likely macOS without standard uname check passing
+        echo "macos"
+        return 0
     fi
 
     echo "unknown"
     return 1
 }
-
-# get_distro_name is defined in common-functions.sh
-# (fallback definition is in the else block above)
 
 # ==============================================================================
 # Dependency Checks
@@ -148,6 +159,7 @@ check_dependencies() {
             arch)   print_info "Install with: sudo pacman -S python" ;;
             debian) print_info "Install with: sudo apt install python3" ;;
             fedora) print_info "Install with: sudo dnf install python3" ;;
+            macos)  print_info "Install with: brew install python@3.11" ;;
         esac
         errors=$((errors + 1))
     fi
@@ -161,6 +173,7 @@ check_dependencies() {
             arch)   print_info "Install with: sudo pacman -S python-pip" ;;
             debian) print_info "Install with: sudo apt install python3-pip" ;;
             fedora) print_info "Install with: sudo dnf install python3-pip" ;;
+            macos)  print_info "pip is included with Homebrew Python" ;;
         esac
         errors=$((errors + 1))
     fi
@@ -172,6 +185,7 @@ check_dependencies() {
         print_error "Python venv module not found"
         case "$os_type" in
             debian) print_info "Install with: sudo apt install python3-venv" ;;
+            macos)  print_info "venv is included with Homebrew Python" ;;
             *)      print_info "The venv module should be included with Python" ;;
         esac
         errors=$((errors + 1))
@@ -191,6 +205,21 @@ check_dependencies() {
         print_success "wget found"
     else
         print_warning "Neither curl nor wget found (needed for downloads)"
+    fi
+
+    # macOS-specific checks
+    if [[ "$os_type" == "macos" ]]; then
+        if check_command brew; then
+            print_success "Homebrew found: $(brew --version | head -1)"
+        else
+            print_warning "Homebrew not found (will be installed automatically)"
+        fi
+
+        if xcode-select -p &>/dev/null; then
+            print_success "Xcode Command Line Tools installed"
+        else
+            print_warning "Xcode Command Line Tools not found (may be installed during setup)"
+        fi
     fi
 
     echo ""
@@ -216,7 +245,7 @@ Options:
 Examples:
   ./detect-os.sh            # Print detected OS info
   ./detect-os.sh --check    # Detect OS and check dependencies
-  ./detect-os.sh --quiet    # Print only: arch, debian, fedora, etc.
+  ./detect-os.sh --quiet    # Print only: arch, debian, fedora, macos, etc.
 EOF
 }
 
@@ -280,7 +309,7 @@ EOF
 
     if [[ "$os_type" == "unknown" ]]; then
         print_error "Could not detect your operating system"
-        print_info "Supported systems: Arch-based, Debian-based, Fedora-based"
+        print_info "Supported systems: Arch-based, Debian-based, Fedora-based, macOS"
         print_info "Please see docs/ for manual installation instructions"
         exit 1
     fi

@@ -55,6 +55,7 @@ jobs:
             numpy \
             matplotlib \
             scipy \
+            pandas \
             jupyter \
             ipykernel
         timeout-minutes: 15
@@ -124,7 +125,7 @@ jobs:
         run: |
           & "$env:USERPROFILE\quantum\.venv\Scripts\Activate.ps1"
           pip install --upgrade pip
-          pip install qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane numpy matplotlib scipy jupyter ipykernel
+          pip install qiskit qiskit-aer qiskit-ibm-runtime cirq pennylane numpy matplotlib scipy pandas jupyter ipykernel
         shell: pwsh
         timeout-minutes: 20
 

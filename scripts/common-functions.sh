@@ -13,16 +13,18 @@
 set -euo pipefail
 
 # ------------------------------------------------------------------------------
-# Color codes
+# Color codes (safe for re-sourcing — skip if already readonly)
 # ------------------------------------------------------------------------------
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly MAGENTA='\033[0;35m'
-readonly CYAN='\033[0;36m'
-readonly BOLD='\033[1m'
-readonly NC='\033[0m'  # No Color
+if ! declare -p RED &>/dev/null 2>&1; then
+    readonly RED='\033[0;31m'
+    readonly GREEN='\033[0;32m'
+    readonly YELLOW='\033[1;33m'
+    readonly BLUE='\033[0;34m'
+    readonly MAGENTA='\033[0;35m'
+    readonly CYAN='\033[0;36m'
+    readonly BOLD='\033[1m'
+    readonly NC='\033[0m'  # No Color
+fi
 
 # ------------------------------------------------------------------------------
 # Quantum directory defaults
@@ -42,6 +44,7 @@ QUANTUM_PACKAGES=(
     "numpy"
     "matplotlib"
     "scipy"
+    "pandas"
     "jupyter"
     "ipykernel"
 )
@@ -81,7 +84,7 @@ print_step() {
     shift
     echo ""
     echo -e "${MAGENTA}${BOLD}[$step_num] $*${NC}"
-    echo -e "${MAGENTA}$(printf '%.0s─' {1..60})${NC}"
+    echo -e "${MAGENTA}$(printf '─%.0s' $(seq 1 60))${NC}"
 }
 
 # Print a section banner
@@ -90,7 +93,7 @@ print_banner() {
     local msg="$*"
     local len=${#msg}
     local border
-    border=$(printf '%.0s═' $(seq 1 $((len + 4))))
+    border=$(printf '═%.0s' $(seq 1 $((len + 4))))
     echo ""
     echo -e "${CYAN}${BOLD}╔${border}╗${NC}"
     echo -e "${CYAN}${BOLD}║  ${msg}  ║${NC}"
@@ -155,7 +158,7 @@ get_python_cmd() {
     elif check_command python; then
         # Verify it's Python 3
         local ver
-        ver=$(python --version 2>&1 | grep -oP '\d+' | head -1)
+        ver=$(python --version 2>&1 | sed -n 's/Python \([0-9]*\).*/\1/p')
         if [[ "$ver" -ge 3 ]]; then
             echo "python"
         else
@@ -172,7 +175,7 @@ get_python_cmd() {
 validate_python_version() {
     local python_cmd="$1"
     local version
-    version=$($python_cmd --version 2>&1 | grep -oP '\d+\.\d+' | head -1)
+    version=$($python_cmd --version 2>&1 | sed -n 's/Python \([0-9]*\.[0-9]*\).*/\1/p')
     local major minor
     major=$(echo "$version" | cut -d. -f1)
     minor=$(echo "$version" | cut -d. -f2)
@@ -275,11 +278,31 @@ detect_shell() {
     echo "$shell_name"
 }
 
+# Get the distribution ID from /etc/os-release
+# Returns: distro ID string via stdout (e.g., arch, ubuntu, debian, fedora)
+get_distro_id() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "macos"
+        return 0
+    fi
+    if [[ -f /etc/os-release ]]; then
+        sed -n 's/^ID="\?\([^"]*\)"\?$/\1/p' /etc/os-release | head -1
+    else
+        uname -s | tr '[:upper:]' '[:lower:]'
+    fi
+}
+
 # Get the distribution pretty name from /etc/os-release
 # Returns: distro name string via stdout
 get_distro_name() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        local macos_ver
+        macos_ver=$(sw_vers -productVersion 2>/dev/null || echo "unknown")
+        echo "macOS $macos_ver"
+        return 0
+    fi
     if [[ -f /etc/os-release ]]; then
-        grep -oP '^PRETTY_NAME=\K.*' /etc/os-release | tr -d '"'
+        sed -n 's/^PRETTY_NAME="\?\([^"]*\)"\?$/\1/p' /etc/os-release | head -1
     else
         uname -s
     fi
@@ -299,6 +322,10 @@ setup_shell_aliases() {
     case "$shell_name" in
         bash)
             local rc_file="$HOME/.bashrc"
+            # On macOS, bash uses .bash_profile for login shells
+            if [[ "$(uname -s)" == "Darwin" && ! -f "$HOME/.bashrc" ]]; then
+                rc_file="$HOME/.bash_profile"
+            fi
             local alias_file="${config_dir}/bash-aliases.sh"
             if [[ -f "$alias_file" ]]; then
                 local marker="# >>> quantum-dev-env aliases >>>"

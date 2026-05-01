@@ -6,6 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-orange.svg)](#-supported-platforms)
+[![Platform: macOS](https://img.shields.io/badge/Platform-macOS-000000.svg)](#-supported-platforms)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](#-supported-platforms)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-3776AB.svg)](https://www.python.org/)
 [![Qiskit](https://img.shields.io/badge/Qiskit-✓-6929C4.svg)](https://qiskit.org/)
@@ -26,7 +27,7 @@ Whether you're a **student** taking your first quantum computing class, a **rese
 
 ## ⚡ Quick Start
 
-### Linux (Arch, Manjaro, Ubuntu, Debian, Mint)
+### Linux & macOS
 
 ```bash
 git clone https://github.com/0Ketan/quantum-dev-env.git
@@ -43,7 +44,7 @@ cd quantum-dev-env
 powershell -ExecutionPolicy Bypass -File scripts/install-windows.ps1
 ```
 
-### One-Liner (Linux)
+### One-Liner (Linux & macOS)
 
 ```bash
 git clone https://github.com/0Ketan/quantum-dev-env.git && cd quantum-dev-env && chmod +x setup.sh && ./setup.sh
@@ -74,10 +75,11 @@ Everything is installed in an **isolated virtual environment** (`~/quantum/.venv
 | 🐧 Debian | ✅ Fully Supported | `install-debian.sh` |
 | 🐧 Linux Mint | ✅ Fully Supported | `install-debian.sh` |
 | 🐧 Pop!_OS | ✅ Fully Supported | `install-debian.sh` |
+| 🍎 macOS (Apple Silicon) | ✅ Tested | `install-macos.sh` |
+| 🍎 macOS (Intel) | ✅ Tested | `install-macos.sh` |
 | 🪟 Windows 10 | ✅ Fully Supported | `install-windows.ps1` |
 | 🪟 Windows 11 | ✅ Fully Supported | `install-windows.ps1` |
 | 🐧 WSL | ✅ Fully Supported | Auto-detected |
-| 🍎 macOS | 🔜 Planned | — |
 
 ## 📖 Manual Installation
 
@@ -85,6 +87,7 @@ If you prefer to install manually or need to troubleshoot:
 
 - **[Arch-based Linux Guide](docs/arch-based.md)** — Arch, Manjaro, CachyOS, Garuda
 - **[Debian-based Linux Guide](docs/debian-based.md)** — Ubuntu, Debian, Mint
+- **[macOS Guide](docs/macos.md)** — Apple Silicon (M1/M2/M3/M4) & Intel
 - **[Windows Guide](docs/windows.md)** — Windows 10/11, WSL
 
 ## ✅ Verify Installation

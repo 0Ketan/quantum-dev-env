@@ -88,7 +88,9 @@ update_system() {
     print_step "1/7" "Updating system packages"
     print_info "Running pacman -Syu..."
 
-    if sudo pacman -Syu --noconfirm 2>&1 | tail -5; then
+    # Run separately: piping to tail makes $? always 0 (tail's exit code)
+    sudo pacman -Syu --noconfirm 2>&1 | tail -5
+    if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
         print_success "System updated"
     else
         print_warning "System update had warnings (continuing...)"
