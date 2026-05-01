@@ -29,10 +29,18 @@ Common issues and solutions for the quantum-dev-env setup.
 **Solution:**
 
 ```bash
-# Reload your shell configuration
+# Reload your shell configuration (Linux/macOS)
 source ~/.bashrc    # For Bash
 source ~/.zshrc     # For Zsh
 # Or restart your terminal
+```
+
+**For Windows (PowerShell):**
+
+```powershell
+# Reload your PowerShell profile
+. $PROFILE
+# Or simply restart your terminal
 ```
 
 If aliases were never added:

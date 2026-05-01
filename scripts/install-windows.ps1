@@ -535,6 +535,11 @@ function qtest { & "__VENV_DIR__\Scripts\python.exe" "__QUANTUM_DIR__\verify-set
     else {
         Write-Info "PowerShell profile already configured"
     }
+
+    # Load functions into the current session so they are available immediately
+    Invoke-Expression "function global:qenv { & `"$VenvDir\Scripts\Activate.ps1`" }"
+    Invoke-Expression "function global:qcd { Set-Location `"$QuantumDir`" }"
+    Invoke-Expression "function global:qtest { & `"$VenvDir\Scripts\python.exe`" `"$QuantumDir\verify-setup.py`" }"
 }
 
 function Invoke-Verification {
@@ -567,6 +572,10 @@ function Show-SuccessMessage {
     Write-Host ""
     Write-Host "  Project directory: $QuantumDir" -ForegroundColor Cyan
     Write-Host "  Virtual environment: $VenvDir" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "===========================================================" -ForegroundColor Red
+    Write-Host " IMPORTANT: Restart your terminal before using the commands! " -ForegroundColor Yellow
+    Write-Host "===========================================================" -ForegroundColor Red
     Write-Host ""
     Write-Host "Quick Start:" -ForegroundColor White
     Write-Host "  qenv          -> Activate the quantum environment" -ForegroundColor Yellow
