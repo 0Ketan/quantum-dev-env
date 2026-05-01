@@ -59,7 +59,7 @@ $VenvDir = Join-Path $QuantumDir ".venv"
 # Resolve script root directory (repo root)
 # ==============================================================================
 
-# $PSScriptRoot points to scripts/ — go one level up for the repo root.
+# $PSScriptRoot points to scripts/ - go one level up for the repo root.
 # We add fallbacks for cases where $PSScriptRoot is empty (e.g., pasting
 # into a console or running via Invoke-Expression).
 $ScriptRoot = $null
@@ -253,7 +253,7 @@ function Install-Python {
 
     Write-Info "Installing Python via winget..."
     # Redirect stdout to $null; keep stderr visible so errors aren't hidden.
-    # Do NOT use 2>&1 | Out-Null — that swallows stderr AND breaks $LASTEXITCODE
+    # Do NOT use 2>&1 | Out-Null - that swallows stderr AND breaks $LASTEXITCODE
     # in PowerShell 5.1. Instead redirect only stdout with *>&1 selectively.
     & winget install Python.Python.3.11 --accept-source-agreements `
           --accept-package-agreements --silent | Out-Null
@@ -461,7 +461,7 @@ function Set-QuantumEnvironment {
 
     if (Test-Path $settingsSrc) {
         # Read the template and fix the Python interpreter path for Windows.
-        # Use plain .NET String.Replace() — no regex involved, no back-reference
+        # Use plain .NET String.Replace() - no regex involved, no back-reference
         # expansion risk. Simple literal-to-literal swap is the safest approach.
         $settingsContent = Get-Content $settingsSrc -Raw
         $settingsContent = $settingsContent.Replace(
