@@ -39,6 +39,7 @@ chmod +x setup.sh
 ### Windows 10/11 (PowerShell)
 
 ```powershell
+cd ~
 git clone https://github.com/0Ketan/quantum-dev-env.git
 cd quantum-dev-env
 powershell -ExecutionPolicy Bypass -File scripts/install-windows.ps1
@@ -99,11 +100,18 @@ qenv          # Activate the environment
 qtest         # Run verification checks
 ```
 
-Or manually:
+Or manually (Linux/macOS):
 
 ```bash
 source ~/quantum/.venv/bin/activate
 python ~/quantum/verify-setup.py
+```
+
+Or manually (Windows):
+
+```powershell
+& "~\quantum\.venv\Scripts\Activate.ps1"
+python ~\quantum\verify-setup.py
 ```
 
 You should see ✅ for each package and a successful Bell state simulation.
