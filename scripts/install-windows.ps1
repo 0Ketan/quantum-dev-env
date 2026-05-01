@@ -86,38 +86,38 @@ if (-not $ScriptRoot) {
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "✅ $Message" -ForegroundColor Green
+    Write-Host "[OK] $Message" -ForegroundColor Green
 }
 
 function Write-Error2 {
     param([string]$Message)
-    Write-Host "❌ $Message" -ForegroundColor Red
+    Write-Host "[ERR] $Message" -ForegroundColor Red
 }
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "ℹ️  $Message" -ForegroundColor Cyan
+    Write-Host "[INFO] $Message" -ForegroundColor Cyan
 }
 
 function Write-Warn {
     param([string]$Message)
-    Write-Host "⚠️  $Message" -ForegroundColor Yellow
+    Write-Host "[WARN] $Message" -ForegroundColor Yellow
 }
 
 function Write-Step {
     param([string]$StepNum, [string]$Message)
     Write-Host ""
     Write-Host "[$StepNum] $Message" -ForegroundColor Magenta
-    Write-Host ("─" * 60) -ForegroundColor Magenta
+    Write-Host ("-" * 60) -ForegroundColor Magenta
 }
 
 function Write-Banner {
     param([string]$Message)
-    $border = "═" * ($Message.Length + 4)
+    $border = "=" * ($Message.Length + 4)
     Write-Host ""
-    Write-Host "╔$border╗" -ForegroundColor Cyan
-    Write-Host "║  $Message  ║" -ForegroundColor Cyan
-    Write-Host "╚$border╝" -ForegroundColor Cyan
+    Write-Host "+$border+" -ForegroundColor Cyan
+    Write-Host "|  $Message  |" -ForegroundColor Cyan
+    Write-Host "+$border+" -ForegroundColor Cyan
     Write-Host ""
 }
 
@@ -209,11 +209,11 @@ function Get-InstallConfirmation {
 
     Write-Host "The following will be installed:" -ForegroundColor White
     Write-Host ""
-    Write-Host "  📦 Python 3.11+ (if not installed)"
-    Write-Host "  🖥️  VS Code (if not installed)"
-    Write-Host "  🔧 Git (if not installed)"
-    Write-Host "  🐍 Packages: $($QuantumPackages -join ', ')"
-    Write-Host "  📂 Directory: $QuantumDir"
+    Write-Host "  - Python 3.11+ (if not installed)"
+    Write-Host "  - VS Code (if not installed)"
+    Write-Host "  - Git (if not installed)"
+    Write-Host "  - Packages: $($QuantumPackages -join ', ')"
+    Write-Host "  - Directory: $QuantumDir"
     Write-Host ""
 
     $choice = Read-Host "Proceed with installation? (Y/n)"
@@ -412,10 +412,10 @@ function Install-QuantumPackages {
         & $pipCmd install $pkg --quiet | Out-Null
 
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "✅ installed" -ForegroundColor Green
+            Write-Host "[OK] installed" -ForegroundColor Green
         }
         else {
-            Write-Host "❌ failed" -ForegroundColor Red
+            Write-Host "[ERR] failed" -ForegroundColor Red
             $failed += $pkg
         }
     }
@@ -561,17 +561,17 @@ function Invoke-Verification {
 }
 
 function Show-SuccessMessage {
-    Write-Banner "🎉 Quantum Dev Environment Ready!"
+    Write-Banner "Quantum Dev Environment Ready!"
 
     Write-Host "Your quantum computing environment is set up!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "📂 Project directory: $QuantumDir" -ForegroundColor Cyan
-    Write-Host "🐍 Virtual environment: $VenvDir" -ForegroundColor Cyan
+    Write-Host "  Project directory: $QuantumDir" -ForegroundColor Cyan
+    Write-Host "  Virtual environment: $VenvDir" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Quick Start:" -ForegroundColor White
-    Write-Host "  qenv          → Activate the quantum environment" -ForegroundColor Yellow
-    Write-Host "  qcd           → Navigate to the quantum directory" -ForegroundColor Yellow
-    Write-Host "  qtest         → Verify your installation" -ForegroundColor Yellow
+    Write-Host "  qenv          -> Activate the quantum environment" -ForegroundColor Yellow
+    Write-Host "  qcd           -> Navigate to the quantum directory" -ForegroundColor Yellow
+    Write-Host "  qtest         -> Verify your installation" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Run an example:" -ForegroundColor White
     Write-Host "  qenv" -ForegroundColor Yellow
@@ -581,7 +581,7 @@ function Show-SuccessMessage {
     Write-Host "  qenv" -ForegroundColor Yellow
     Write-Host "  jupyter notebook" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Happy quantum computing! 🚀" -ForegroundColor Magenta
+    Write-Host "Happy quantum computing!" -ForegroundColor Magenta
 }
 
 # ==============================================================================
@@ -593,7 +593,7 @@ if ($Help) {
     exit 0
 }
 
-Write-Banner "🚀 Quantum Dev Environment - Windows Installer"
+Write-Banner "Quantum Dev Environment - Windows Installer"
 
 # Check PowerShell version
 if ($PSVersionTable.PSVersion.Major -lt 5) {
